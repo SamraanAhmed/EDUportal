@@ -4,7 +4,6 @@ import { ArrowLeft, Download } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -14,12 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { GradeDialog } from './_components/GradeDialog'
-
-const typeColors: Record<string, string> = {
-  assignment: 'bg-blue-100 text-blue-700 border-blue-200',
-  quiz: 'bg-green-100 text-green-700 border-green-200',
-  activity: 'bg-purple-100 text-purple-700 border-purple-200',
-}
+import { TASK_TYPE_CONFIG, type TaskType } from '@/lib/types'
 
 export default async function SubmissionsPage({
   params,
@@ -50,6 +44,13 @@ export default async function SubmissionsPage({
     .eq('task_id', taskId)
     .order('submitted_at', { ascending: false })
 
+  const taskConfig = TASK_TYPE_CONFIG[task.type as TaskType] ?? {
+    label: task.type,
+    defaultMarks: 10,
+    color: 'bg-gray-100 text-gray-700',
+  }
+  const maxMarks = task.max_marks ?? taskConfig.defaultMarks
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -64,10 +65,13 @@ export default async function SubmissionsPage({
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold text-gray-900">{task.title}</h1>
             <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${typeColors[task.type] ?? 'bg-gray-100 text-gray-700'}`}
+              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${taskConfig.color}`}
             >
-              {task.type.charAt(0).toUpperCase() + task.type.slice(1)}
+              {taskConfig.label}
             </span>
+            <Badge variant="outline" className="font-semibold text-gray-700">
+              Max: {maxMarks} Marks
+            </Badge>
           </div>
           {task.due_date && (
             <p className="text-sm text-gray-500">
@@ -94,7 +98,7 @@ export default async function SubmissionsPage({
                 <TableHead className="font-semibold text-gray-700">Email</TableHead>
                 <TableHead className="font-semibold text-gray-700">Submitted At</TableHead>
                 <TableHead className="font-semibold text-gray-700">File</TableHead>
-                <TableHead className="font-semibold text-gray-700">Score</TableHead>
+                <TableHead className="font-semibold text-gray-700">Score ({maxMarks})</TableHead>
                 <TableHead className="font-semibold text-gray-700">Feedback</TableHead>
                 <TableHead className="font-semibold text-gray-700 text-right">Actions</TableHead>
               </TableRow>
@@ -126,7 +130,7 @@ export default async function SubmissionsPage({
                     <TableCell>
                       {sub.score !== null ? (
                         <Badge className="bg-green-100 text-green-700 border-green-200 font-semibold">
-                          {sub.score}/100
+                          {sub.score} / {maxMarks}
                         </Badge>
                       ) : (
                         <span className="text-xs text-gray-400">—</span>
@@ -144,6 +148,7 @@ export default async function SubmissionsPage({
                         submissionId={sub.id}
                         courseId={courseId}
                         taskId={taskId}
+                        maxMarks={maxMarks}
                         existingScore={sub.score}
                         existingFeedback={sub.feedback}
                       />

@@ -1,6 +1,6 @@
 export type Role = 'superadmin' | 'faculty' | 'student'
 export type Status = 'pending' | 'approved'
-export type TaskType = 'assignment' | 'quiz' | 'activity'
+export type TaskType = 'quiz_pre_mid' | 'quiz_post_mid' | 'assignment' | 'workbook' | 'activity' | 'quiz'
 
 export interface Department {
   id: string
@@ -57,6 +57,7 @@ export interface Task {
   course_id: string
   due_date: string | null
   file_url: string | null
+  max_marks: number
   created_by: string | null
   created_at: string
   courses?: Course
@@ -74,4 +75,24 @@ export interface Submission {
   graded_by: string | null
   tasks?: Task
   profiles?: Profile
+}
+
+export interface VivaEvaluation {
+  id: string
+  course_id: string
+  student_id: string
+  viva_score: number | null
+  feedback: string | null
+  graded_by: string | null
+  graded_at: string | null
+  profiles?: Profile
+}
+
+export const TASK_TYPE_CONFIG: Record<TaskType, { label: string; defaultMarks: number; color: string }> = {
+  quiz_pre_mid: { label: 'Quiz 1 (Before Mid)', defaultMarks: 5, color: 'bg-emerald-100 text-emerald-800' },
+  quiz_post_mid: { label: 'Quiz 2 (After Mid)', defaultMarks: 5, color: 'bg-teal-100 text-teal-800' },
+  assignment: { label: 'Assignment', defaultMarks: 10, color: 'bg-blue-100 text-blue-800' },
+  workbook: { label: 'Workbook Fill-up', defaultMarks: 30, color: 'bg-amber-100 text-amber-800' },
+  activity: { label: 'Class Activity / Attendance', defaultMarks: 10, color: 'bg-purple-100 text-purple-800' },
+  quiz: { label: 'Quiz', defaultMarks: 5, color: 'bg-emerald-100 text-emerald-800' },
 }

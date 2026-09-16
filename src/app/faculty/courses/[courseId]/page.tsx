@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users } from 'lucide-react'
+import { ArrowLeft, Users, Award } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -15,6 +14,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TasksPanel } from './_components/TasksPanel'
+import { GradebookPanel } from './_components/GradebookPanel'
 
 export default async function CourseDetailPage({
   params,
@@ -44,6 +44,24 @@ export default async function CourseDetailPage({
     .select('*')
     .eq('course_id', courseId)
     .order('created_at', { ascending: false })
+
+  const taskIds = tasks && tasks.length > 0 ? tasks.map((t) => t.id) : []
+
+  // Fetch submissions for all tasks in this course
+  let submissions: any[] = []
+  if (taskIds.length > 0) {
+    const { data: subs } = await admin
+      .from('submissions')
+      .select('*, tasks(type, max_marks)')
+      .in('task_id', taskIds)
+    submissions = subs ?? []
+  }
+
+  // Fetch viva evaluations
+  const { data: vivaEvaluations } = await admin
+    .from('viva_evaluations')
+    .select('*')
+    .eq('course_id', courseId)
 
   // Fetch students in the same batch
   const { data: students } = await admin
@@ -80,14 +98,31 @@ export default async function CourseDetailPage({
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="tasks">
+      <Tabs defaultValue="gradebook">
         <TabsList className="mb-6">
-          <TabsTrigger value="tasks">Tasks ({tasks?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="gradebook" className="gap-1.5 font-semibold">
+            <Award className="h-3.5 w-3.5 text-indigo-600" />
+            Gradebook & Viva (100)
+          </TabsTrigger>
+          <TabsTrigger value="tasks">
+            Evaluation Items ({tasks?.length ?? 0})
+          </TabsTrigger>
           <TabsTrigger value="students">
             <Users className="h-3.5 w-3.5 mr-1.5" />
             Students ({students?.length ?? 0})
           </TabsTrigger>
         </TabsList>
+
+        {/* Gradebook Tab */}
+        <TabsContent value="gradebook">
+          <GradebookPanel
+            courseId={courseId}
+            students={students ?? []}
+            tasks={tasks ?? []}
+            submissions={submissions}
+            vivaEvaluations={vivaEvaluations ?? []}
+          />
+        </TabsContent>
 
         {/* Tasks Tab */}
         <TabsContent value="tasks">

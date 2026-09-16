@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { createTask, updateTask, deleteTask } from '@/actions/faculty'
 import { toast } from 'sonner'
-import type { Task, TaskType } from '@/lib/types'
+import { TASK_TYPE_CONFIG, type Task, type TaskType } from '@/lib/types'
 import Link from 'next/link'
 
 interface TasksPanelProps {
@@ -24,16 +24,15 @@ interface TasksPanelProps {
   courseId: string
 }
 
-const typeColors: Record<string, string> = {
-  assignment: 'bg-blue-100 text-blue-700 border-blue-200',
-  quiz: 'bg-green-100 text-green-700 border-green-200',
-  activity: 'bg-purple-100 text-purple-700 border-purple-200',
-}
-
-function TaskTypeBadge({ type }: { type: string }) {
+function TaskTypeBadge({ type }: { type: TaskType }) {
+  const config = TASK_TYPE_CONFIG[type] ?? {
+    label: type,
+    defaultMarks: 10,
+    color: 'bg-gray-100 text-gray-700',
+  }
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${typeColors[type] ?? 'bg-gray-100 text-gray-700'}`}>
-      {type.charAt(0).toUpperCase() + type.slice(1)}
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${config.color}`}>
+      {config.label}
     </span>
   )
 }
@@ -43,11 +42,20 @@ function AddTaskDialog({ courseId }: { courseId: string }) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [taskType, setTaskType] = useState<TaskType>('assignment')
+  const [maxMarks, setMaxMarks] = useState<number>(10)
+
+  const handleTypeChange = (v: TaskType) => {
+    setTaskType(v)
+    const defMarks = TASK_TYPE_CONFIG[v]?.defaultMarks ?? 10
+    setMaxMarks(defMarks)
+  }
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set('type', taskType)
+    formData.set('max_marks', String(maxMarks))
+
     startTransition(async () => {
       const result = await createTask(courseId, formData)
       if (result?.error) {
@@ -66,41 +74,64 @@ function AddTaskDialog({ courseId }: { courseId: string }) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add New Task</DialogTitle>
+          <DialogTitle>Add Course Task / Evaluation Component</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="title">Title</Label>
-            <Input id="title" name="title" placeholder="Task title" required />
+            <Input id="title" name="title" placeholder="e.g. Lab Workbook Chapter 1-5" required />
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Component Category</Label>
+              <Select
+                value={taskType}
+                onValueChange={(v) => { if (v) handleTypeChange(v as TaskType) }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="quiz_pre_mid">Quiz 1 (Before Mid) [5m]</SelectItem>
+                  <SelectItem value="quiz_post_mid">Quiz 2 (After Mid) [5m]</SelectItem>
+                  <SelectItem value="assignment">Assignment [10m]</SelectItem>
+                  <SelectItem value="workbook">Workbook Fill-up [30m]</SelectItem>
+                  <SelectItem value="activity">Class Activity / Attendance [10m]</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="max_marks">Max Marks</Label>
+              <Input
+                id="max_marks"
+                name="max_marks"
+                type="number"
+                min={1}
+                max={100}
+                value={maxMarks}
+                onChange={(e) => setMaxMarks(parseInt(e.target.value, 10) || 0)}
+                required
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
-            <Label>Type</Label>
-            <Select
-              value={taskType}
-              onValueChange={(v) => { if (v) setTaskType(v as TaskType) }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="assignment">Assignment</SelectItem>
-                <SelectItem value="quiz">Quiz</SelectItem>
-                <SelectItem value="activity">Activity</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="description">Description / Guidelines</Label>
+            <Textarea id="description" name="description" placeholder="Instructions, criteria, or submission guidelines..." rows={3} />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="description">Description</Label>
-            <Textarea id="description" name="description" placeholder="Task description (optional)" rows={3} />
-          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="due_date">Due Date</Label>
             <Input id="due_date" name="due_date" type="date" />
           </div>
+
           <div className="space-y-1.5">
-            <Label htmlFor="file">Attachment (optional)</Label>
+            <Label htmlFor="file">Attachment / Rubric (optional)</Label>
             <Input id="file" name="file" type="file" />
           </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
@@ -120,11 +151,14 @@ function EditTaskDialog({ task, courseId }: { task: Task; courseId: string }) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [taskType, setTaskType] = useState<TaskType>(task.type)
+  const [maxMarks, setMaxMarks] = useState<number>(task.max_marks ?? 10)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     formData.set('type', taskType)
+    formData.set('max_marks', String(maxMarks))
+
     startTransition(async () => {
       const result = await updateTask(task.id, courseId, formData)
       if (result?.error) {
@@ -150,26 +184,47 @@ function EditTaskDialog({ task, courseId }: { task: Task; courseId: string }) {
             <Label htmlFor={`title-${task.id}`}>Title</Label>
             <Input id={`title-${task.id}`} name="title" defaultValue={task.title} required />
           </div>
-          <div className="space-y-1.5">
-            <Label>Type</Label>
-            <Select
-              value={taskType}
-              onValueChange={(v) => { if (v) setTaskType(v as TaskType) }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="assignment">Assignment</SelectItem>
-                <SelectItem value="quiz">Quiz</SelectItem>
-                <SelectItem value="activity">Activity</SelectItem>
-              </SelectContent>
-            </Select>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Component Category</Label>
+              <Select
+                value={taskType}
+                onValueChange={(v) => { if (v) setTaskType(v as TaskType) }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="quiz_pre_mid">Quiz 1 (Before Mid)</SelectItem>
+                  <SelectItem value="quiz_post_mid">Quiz 2 (After Mid)</SelectItem>
+                  <SelectItem value="assignment">Assignment</SelectItem>
+                  <SelectItem value="workbook">Workbook Fill-up</SelectItem>
+                  <SelectItem value="activity">Class Activity / Attendance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor={`marks-${task.id}`}>Max Marks</Label>
+              <Input
+                id={`marks-${task.id}`}
+                name="max_marks"
+                type="number"
+                min={1}
+                max={100}
+                value={maxMarks}
+                onChange={(e) => setMaxMarks(parseInt(e.target.value, 10) || 0)}
+                required
+              />
+            </div>
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor={`desc-${task.id}`}>Description</Label>
             <Textarea id={`desc-${task.id}`} name="description" defaultValue={task.description ?? ''} rows={3} />
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor={`due-${task.id}`}>Due Date</Label>
             <Input
@@ -179,6 +234,7 @@ function EditTaskDialog({ task, courseId }: { task: Task; courseId: string }) {
               defaultValue={task.due_date ? task.due_date.split('T')[0] : ''}
             />
           </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
@@ -228,26 +284,31 @@ export function TasksPanel({ tasks, courseId }: TasksPanelProps) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-700">
-          {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+          {tasks.length} evaluation item{tasks.length !== 1 ? 's' : ''}
         </h2>
         <AddTaskDialog courseId={courseId} />
       </div>
 
       {tasks.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-gray-200 bg-white py-12 text-center">
-          <p className="text-sm text-gray-400">No tasks yet. Add your first task to get started.</p>
+          <p className="text-sm text-gray-400">No tasks created yet. Add quizzes, assignments, or workbook fill-up to get started.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm"
+              className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm hover:border-gray-300 transition-colors"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <TaskTypeBadge type={task.type} />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{task.title}</p>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-700">
+                      {task.max_marks ?? 10} Marks
+                    </span>
+                  </div>
                   {task.due_date && (
                     <p className="text-xs text-gray-400 mt-0.5">
                       Due: {new Date(task.due_date).toLocaleDateString()}
@@ -257,8 +318,8 @@ export function TasksPanel({ tasks, courseId }: TasksPanelProps) {
               </div>
               <div className="flex items-center gap-1 flex-shrink-0 ml-3">
                 <Link href={`/faculty/courses/${courseId}/tasks/${task.id}/submissions`}>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-500 hover:text-blue-700">
-                    <Eye className="h-3.5 w-3.5" />
+                  <Button size="sm" variant="ghost" className="gap-1 text-blue-600 hover:text-blue-800">
+                    <Eye className="h-3.5 w-3.5" /> Submissions
                   </Button>
                 </Link>
                 <EditTaskDialog task={task} courseId={courseId} />

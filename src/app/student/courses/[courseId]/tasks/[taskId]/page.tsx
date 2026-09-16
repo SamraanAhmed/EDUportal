@@ -7,12 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { SubmitForm } from './_components/SubmitForm'
-
-const typeColors: Record<string, string> = {
-  assignment: 'bg-blue-100 text-blue-700 border-blue-200',
-  quiz: 'bg-green-100 text-green-700 border-green-200',
-  activity: 'bg-purple-100 text-purple-700 border-purple-200',
-}
+import { TASK_TYPE_CONFIG, type TaskType } from '@/lib/types'
 
 export default async function StudentTaskPage({
   params,
@@ -42,10 +37,17 @@ export default async function StudentTaskPage({
     .select('*')
     .eq('task_id', taskId)
     .eq('student_id', user.id)
-    .single()
+    .maybeSingle()
 
   const isSubmitted = !!submission
   const isGraded = isSubmitted && submission.score !== null
+
+  const config = TASK_TYPE_CONFIG[task.type as TaskType] ?? {
+    label: task.type,
+    defaultMarks: 10,
+    color: 'bg-gray-100 text-gray-700',
+  }
+  const maxMarks = task.max_marks ?? config.defaultMarks
 
   return (
     <div className="p-8 max-w-3xl">
@@ -65,10 +67,13 @@ export default async function StudentTaskPage({
               {task.title}
             </CardTitle>
             <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium flex-shrink-0 ${typeColors[task.type] ?? 'bg-gray-100 text-gray-700'}`}
+              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold flex-shrink-0 ${config.color}`}
             >
-              {task.type.charAt(0).toUpperCase() + task.type.slice(1)}
+              {config.label}
             </span>
+            <Badge variant="outline" className="font-semibold text-gray-700">
+              Max: {maxMarks} Marks
+            </Badge>
           </div>
           {task.due_date && (
             <p className="text-sm text-gray-500">
@@ -85,7 +90,7 @@ export default async function StudentTaskPage({
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Attachment
+                  Reference File / Rubric
                 </p>
                 <a
                   href={task.file_url}
@@ -114,7 +119,7 @@ export default async function StudentTaskPage({
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
                 <span className="text-sm font-medium text-green-700">Graded</span>
                 <Badge className="bg-green-100 text-green-700 border-green-200 font-bold text-sm ml-1">
-                  {submission.score}/100
+                  {submission.score} / {maxMarks} Marks
                 </Badge>
               </div>
               {submission.feedback && (

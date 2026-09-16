@@ -19,6 +19,7 @@ interface GradeDialogProps {
   submissionId: string
   courseId: string
   taskId: string
+  maxMarks?: number
   existingScore?: number | null
   existingFeedback?: string | null
 }
@@ -27,6 +28,7 @@ export function GradeDialog({
   submissionId,
   courseId,
   taskId,
+  maxMarks = 10,
   existingScore,
   existingFeedback,
 }: GradeDialogProps) {
@@ -37,6 +39,13 @@ export function GradeDialog({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
+    const scoreVal = parseInt(formData.get('score') as string, 10)
+
+    if (scoreVal < 0 || scoreVal > maxMarks) {
+      toast.error(`Score must be between 0 and ${maxMarks}`)
+      return
+    }
+
     startTransition(async () => {
       const result = await gradeSubmission(submissionId, courseId, formData)
       if (result?.error) {
@@ -59,20 +68,20 @@ export function GradeDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Grade Submission</DialogTitle>
+          <DialogTitle>Grade Submission (Max: {maxMarks} Marks)</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="score">Score (0–100)</Label>
+            <Label htmlFor="score">Score (0–{maxMarks})</Label>
             <Input
               id="score"
               name="score"
               type="number"
               min={0}
-              max={100}
+              max={maxMarks}
               defaultValue={existingScore ?? ''}
               required
-              placeholder="e.g. 85"
+              placeholder={`e.g. ${Math.round(maxMarks * 0.8)}`}
             />
           </div>
           <div className="space-y-1.5">
@@ -81,8 +90,8 @@ export function GradeDialog({
               id="feedback"
               name="feedback"
               rows={3}
+              placeholder="Good effort! Focus on..."
               defaultValue={existingFeedback ?? ''}
-              placeholder="Write feedback for the student…"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
