@@ -95,11 +95,13 @@ export async function createCourse(formData: FormData) {
   const description = formData.get('description') as string
   const batch_id = formData.get('batch_id') as string
   const faculty_id = formData.get('faculty_id') as string
+  const resource_url = formData.get('resource_url') as string
   const { error } = await admin.from('courses').insert({
     name,
     description: description || null,
     batch_id,
     faculty_id: faculty_id || null,
+    resource_url: resource_url || null,
   })
   if (error) return { error: error.message }
   revalidatePath('/admin/courses')
@@ -112,11 +114,13 @@ export async function updateCourse(id: string, formData: FormData) {
   const description = formData.get('description') as string
   const batch_id = formData.get('batch_id') as string
   const faculty_id = formData.get('faculty_id') as string
+  const resource_url = formData.get('resource_url') as string
   const { error } = await admin.from('courses').update({
     name,
     description: description || null,
     batch_id,
     faculty_id: faculty_id || null,
+    resource_url: resource_url || null,
   }).eq('id', id)
   if (error) return { error: error.message }
   revalidatePath('/admin/courses')

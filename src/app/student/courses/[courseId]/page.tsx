@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, GraduationCap, FileText, Calendar, CheckCircle2, Clock, Award, BookCheck } from 'lucide-react'
+import { ArrowLeft, GraduationCap, FileText, Calendar, CheckCircle2, Clock, Award, BookCheck, BookOpen, Download, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/badge'
@@ -119,6 +119,42 @@ export default async function StudentCoursePage({
           )}
         </div>
       </div>
+
+      {/* ── Highlighted Course Books / Drive Link Button ── */}
+      {course.resource_url && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 p-5 text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.005]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    Course Books & Reading Material
+                  </h3>
+                  <span className="rounded-full bg-yellow-400 px-2.5 py-0.5 text-[10px] font-extrabold uppercase text-gray-900 shadow-sm animate-pulse">
+                    Download
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-100 mt-0.5">
+                  Access and download textbook volumes (معلم القرآن), notes, and reference files from Google Drive
+                </p>
+              </div>
+            </div>
+            <a
+              href={course.resource_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-emerald-900 shadow-md transition-all hover:bg-yellow-300 hover:text-gray-900 hover:shadow-lg flex-shrink-0"
+            >
+              <Download className="h-4 w-4 text-emerald-700" />
+              <span>Open Google Drive Books</span>
+              <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* ── Evaluation & Mark Distribution Summary ── */}
       <Card className="border-indigo-100 shadow-sm bg-gradient-to-br from-white to-indigo-50/30 overflow-hidden">

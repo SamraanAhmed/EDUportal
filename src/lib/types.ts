@@ -44,6 +44,7 @@ export interface Course {
   description: string | null
   batch_id: string
   faculty_id: string | null
+  resource_url?: string | null
   created_at: string
   batches?: Batch
   profiles?: Profile

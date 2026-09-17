@@ -16,7 +16,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 interface Batch { id: string; name: string; program_id: string; programs: { name: string } | null }
 interface Faculty { id: string; full_name: string }
 interface Course {
-  id: string; name: string; description: string | null; batch_id: string; faculty_id: string | null; created_at: string
+  id: string; name: string; description: string | null; batch_id: string; faculty_id: string | null; resource_url?: string | null; created_at: string
   batches: { name: string; programs: { name: string } | null } | null
   profiles: { full_name: string } | null
 }
@@ -89,6 +89,10 @@ export function CoursesClient({ courses, batches, faculty }: { courses: Course[]
               {faculty.map(f => <SelectItem key={f.id} value={f.id}>{f.full_name}</SelectItem>)}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="resource_url">Books / Drive Link (optional)</Label>
+          <Input id="resource_url" name="resource_url" placeholder="https://drive.google.com/..." defaultValue={defaults?.resource_url ?? ''} />
         </div>
       </>
     )

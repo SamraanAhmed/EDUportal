@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users, Award } from 'lucide-react'
+import { ArrowLeft, Users, Award, BookOpen, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/badge'
@@ -93,6 +93,18 @@ export default async function CourseDetailPage({
           </div>
           {course.description && (
             <p className="text-sm text-gray-500 mt-1">{course.description}</p>
+          )}
+          {course.resource_url && (
+            <a
+              href={course.resource_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-colors w-fit mt-2"
+            >
+              <BookOpen className="h-4 w-4 text-emerald-600" />
+              <span>Course Books & Material (Google Drive)</span>
+              <ExternalLink className="h-3.5 w-3.5 text-emerald-400" />
+            </a>
           )}
         </div>
       </div>
