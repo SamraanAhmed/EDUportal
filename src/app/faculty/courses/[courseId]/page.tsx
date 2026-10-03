@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users, Award, BookOpen, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Users, Award, BookOpen, ExternalLink, Video } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TasksPanel } from './_components/TasksPanel'
 import { GradebookPanel } from './_components/GradebookPanel'
+import { VideoLecturesPanel } from './_components/VideoLecturesPanel'
 
 export default async function CourseDetailPage({
   params,
@@ -62,6 +63,13 @@ export default async function CourseDetailPage({
     .from('viva_evaluations')
     .select('*')
     .eq('course_id', courseId)
+
+  // Fetch video lectures in ascending order (Lecture 1, 2, 3...)
+  const { data: videos } = await admin
+    .from('video_lectures')
+    .select('*')
+    .eq('course_id', courseId)
+    .order('created_at', { ascending: true })
 
   // Fetch students in the same batch
   const { data: students } = await admin
@@ -119,6 +127,10 @@ export default async function CourseDetailPage({
           <TabsTrigger value="tasks">
             Evaluation Items ({tasks?.length ?? 0})
           </TabsTrigger>
+          <TabsTrigger value="videos" className="gap-1.5 font-semibold">
+            <Video className="h-3.5 w-3.5 text-red-600" />
+            Video Lectures ({videos?.length ?? 0})
+          </TabsTrigger>
           <TabsTrigger value="students">
             <Users className="h-3.5 w-3.5 mr-1.5" />
             Students ({students?.length ?? 0})
@@ -139,6 +151,15 @@ export default async function CourseDetailPage({
         {/* Tasks Tab */}
         <TabsContent value="tasks">
           <TasksPanel tasks={tasks ?? []} courseId={courseId} />
+        </TabsContent>
+
+        {/* Video Lectures Tab */}
+        <TabsContent value="videos">
+          <VideoLecturesPanel
+            videos={videos ?? []}
+            courseId={courseId}
+            showActions={true}
+          />
         </TabsContent>
 
         {/* Students Tab */}

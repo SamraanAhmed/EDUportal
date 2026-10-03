@@ -151,3 +151,57 @@ export async function gradeViva(courseId: string, studentId: string, formData: F
   revalidatePath(`/faculty/courses/${courseId}`)
   return { success: true }
 }
+
+// ─── VIDEO LECTURES ──────────────────────────────────────────
+export async function createVideoLecture(courseId: string, formData: FormData) {
+  const supabase = await createClient()
+  const admin = createAdminClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const title = formData.get('title') as string
+  const youtube_url = formData.get('youtube_url') as string
+
+  if (!title?.trim() || !youtube_url?.trim()) {
+    return { error: 'Title and YouTube URL are required' }
+  }
+
+  const { error } = await admin.from('video_lectures').insert({
+    course_id: courseId,
+    title: title.trim(),
+    youtube_url: youtube_url.trim(),
+    created_by: user.id,
+  })
+
+  if (error) return { error: error.message }
+  revalidatePath(`/faculty/courses/${courseId}`)
+  return { success: true }
+}
+
+export async function updateVideoLecture(id: string, courseId: string, formData: FormData) {
+  const admin = createAdminClient()
+
+  const title = formData.get('title') as string
+  const youtube_url = formData.get('youtube_url') as string
+
+  if (!title?.trim() || !youtube_url?.trim()) {
+    return { error: 'Title and YouTube URL are required' }
+  }
+
+  const { error } = await admin.from('video_lectures').update({
+    title: title.trim(),
+    youtube_url: youtube_url.trim(),
+  }).eq('id', id)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/faculty/courses/${courseId}`)
+  return { success: true }
+}
+
+export async function deleteVideoLecture(id: string, courseId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin.from('video_lectures').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath(`/faculty/courses/${courseId}`)
+  return { success: true }
+}

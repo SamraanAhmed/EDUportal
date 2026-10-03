@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TASK_TYPE_CONFIG, type TaskType, type VivaEvaluation } from '@/lib/types'
+import { VideoLecturesPanel } from '@/components/VideoLecturesPanel'
 
 export default async function StudentCoursePage({
   params,
@@ -57,6 +58,13 @@ export default async function StudentCoursePage({
     .eq('course_id', courseId)
     .eq('student_id', user.id)
     .maybeSingle()
+
+  // Fetch video lectures in ascending order (Lecture 1, 2, 3...)
+  const { data: videos } = await admin
+    .from('video_lectures')
+    .select('*')
+    .eq('course_id', courseId)
+    .order('created_at', { ascending: true })
 
   const faculty = course.profiles as { full_name: string } | null
 
@@ -230,6 +238,13 @@ export default async function StudentCoursePage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Video Lectures Section */}
+      <VideoLecturesPanel
+        videos={videos ?? []}
+        courseId={courseId}
+        showActions={false}
+      />
 
       {/* Tasks Section */}
       <div>

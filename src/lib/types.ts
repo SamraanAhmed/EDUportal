@@ -89,6 +89,15 @@ export interface VivaEvaluation {
   profiles?: Profile
 }
 
+export interface VideoLecture {
+  id: string
+  course_id: string
+  title: string
+  youtube_url: string
+  created_by: string | null
+  created_at: string
+}
+
 export const TASK_TYPE_CONFIG: Record<TaskType, { label: string; defaultMarks: number; color: string }> = {
   quiz_pre_mid: { label: 'Quiz 1 (Before Mid)', defaultMarks: 5, color: 'bg-emerald-100 text-emerald-800' },
   quiz_post_mid: { label: 'Quiz 2 (After Mid)', defaultMarks: 5, color: 'bg-teal-100 text-teal-800' },
