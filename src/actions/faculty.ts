@@ -153,55 +153,139 @@ export async function gradeViva(courseId: string, studentId: string, formData: F
 }
 
 // ─── VIDEO LECTURES ──────────────────────────────────────────
-export async function createVideoLecture(courseId: string, formData: FormData) {
+export async function createVideoLecture(
+  arg1: FormData | string,
+  arg2?: FormData | string
+) {
   const supabase = await createClient()
   const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
 
+  let formData: FormData
+  let optionalCourseId: string | undefined
+
+  if (arg1 instanceof FormData) {
+    formData = arg1
+    optionalCourseId = typeof arg2 === 'string' ? arg2 : undefined
+  } else {
+    optionalCourseId = arg1
+    formData = arg2 as FormData
+  }
+
   const title = formData.get('title') as string
   const youtube_url = formData.get('youtube_url') as string
+  
+  // Collect course IDs: from multiple formData entries or fallback param
+  let selectedCourseIds = formData.getAll('course_ids') as string[]
+  if (selectedCourseIds.length === 0 && optionalCourseId) {
+    selectedCourseIds = [optionalCourseId]
+  }
 
   if (!title?.trim() || !youtube_url?.trim()) {
     return { error: 'Title and YouTube URL are required' }
   }
 
-  const { error } = await admin.from('video_lectures').insert({
-    course_id: courseId,
-    title: title.trim(),
-    youtube_url: youtube_url.trim(),
-    created_by: user.id,
-  })
+  if (selectedCourseIds.length === 0) {
+    return { error: 'Please select at least one course to assign this video to' }
+  }
 
-  if (error) return { error: error.message }
-  revalidatePath(`/faculty/courses/${courseId}`)
+  // Insert lecture
+  const { data: lecture, error: lectureError } = await admin
+    .from('video_lectures')
+    .insert({
+      title: title.trim(),
+      youtube_url: youtube_url.trim(),
+      course_id: selectedCourseIds[0] || null,
+      created_by: user.id,
+    })
+    .select('id')
+    .single()
+
+  if (lectureError) return { error: lectureError.message }
+
+  // Insert links to selected courses
+  const links = selectedCourseIds.map((cId) => ({
+    video_lecture_id: lecture.id,
+    course_id: cId,
+  }))
+
+  const { error: linkError } = await admin
+    .from('video_lecture_courses')
+    .upsert(links, { onConflict: 'video_lecture_id,course_id' })
+
+  if (linkError) return { error: linkError.message }
+
+  revalidatePath('/faculty/lectures')
+  revalidatePath('/faculty', 'layout')
+  revalidatePath('/student', 'layout')
   return { success: true }
 }
 
-export async function updateVideoLecture(id: string, courseId: string, formData: FormData) {
+export async function updateVideoLecture(
+  id: string,
+  arg2: FormData | string,
+  arg3?: FormData | string
+) {
   const admin = createAdminClient()
 
+  let formData: FormData
+  let optionalCourseId: string | undefined
+
+  if (arg2 instanceof FormData) {
+    formData = arg2
+    optionalCourseId = typeof arg3 === 'string' ? arg3 : undefined
+  } else {
+    optionalCourseId = arg2
+    formData = arg3 as FormData
+  }
+
   const title = formData.get('title') as string
   const youtube_url = formData.get('youtube_url') as string
+  let selectedCourseIds = formData.getAll('course_ids') as string[]
+  if (selectedCourseIds.length === 0 && optionalCourseId) {
+    selectedCourseIds = [optionalCourseId]
+  }
 
   if (!title?.trim() || !youtube_url?.trim()) {
     return { error: 'Title and YouTube URL are required' }
   }
 
-  const { error } = await admin.from('video_lectures').update({
-    title: title.trim(),
-    youtube_url: youtube_url.trim(),
-  }).eq('id', id)
+  const { error: updateError } = await admin
+    .from('video_lectures')
+    .update({
+      title: title.trim(),
+      youtube_url: youtube_url.trim(),
+    })
+    .eq('id', id)
 
-  if (error) return { error: error.message }
-  revalidatePath(`/faculty/courses/${courseId}`)
+  if (updateError) return { error: updateError.message }
+
+  // If course selection was provided, sync video_lecture_courses
+  if (selectedCourseIds.length > 0) {
+    await admin.from('video_lecture_courses').delete().eq('video_lecture_id', id)
+    const links = selectedCourseIds.map((cId) => ({
+      video_lecture_id: id,
+      course_id: cId,
+    }))
+    const { error: linkError } = await admin
+      .from('video_lecture_courses')
+      .upsert(links, { onConflict: 'video_lecture_id,course_id' })
+    if (linkError) return { error: linkError.message }
+  }
+
+  revalidatePath('/faculty/lectures')
+  revalidatePath('/faculty', 'layout')
+  revalidatePath('/student', 'layout')
   return { success: true }
 }
 
-export async function deleteVideoLecture(id: string, courseId: string) {
+export async function deleteVideoLecture(id: string, courseId?: string) {
   const admin = createAdminClient()
   const { error } = await admin.from('video_lectures').delete().eq('id', id)
   if (error) return { error: error.message }
-  revalidatePath(`/faculty/courses/${courseId}`)
+  revalidatePath('/faculty/lectures')
+  revalidatePath('/faculty', 'layout')
+  revalidatePath('/student', 'layout')
   return { success: true }
 }

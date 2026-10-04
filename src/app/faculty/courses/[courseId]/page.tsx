@@ -64,12 +64,28 @@ export default async function CourseDetailPage({
     .select('*')
     .eq('course_id', courseId)
 
-  // Fetch video lectures in ascending order (Lecture 1, 2, 3...)
-  const { data: videos } = await admin
+  // Fetch video lectures assigned to this course (via junction table or direct course_id)
+  const { data: linkedVideos } = await admin
+    .from('video_lecture_courses')
+    .select('video_lectures(*)')
+    .eq('course_id', courseId)
+
+  const videosFromJunction = (linkedVideos ?? [])
+    .map((item: any) => item.video_lectures)
+    .filter(Boolean)
+
+  const { data: directVideos } = await admin
     .from('video_lectures')
     .select('*')
     .eq('course_id', courseId)
-    .order('created_at', { ascending: true })
+
+  const videoMap = new Map<string, any>()
+  for (const v of [...(videosFromJunction ?? []), ...(directVideos ?? [])]) {
+    videoMap.set(v.id, v)
+  }
+  const videos = Array.from(videoMap.values()).sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
 
   // Fetch students in the same batch
   const { data: students } = await admin

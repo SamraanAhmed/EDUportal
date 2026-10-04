@@ -91,10 +91,17 @@ export interface VivaEvaluation {
 
 export interface VideoLecture {
   id: string
-  course_id: string
   title: string
   youtube_url: string
+  course_id?: string | null
   created_by: string | null
+  created_at: string
+  courses?: Course[]
+}
+
+export interface VideoLectureCourse {
+  video_lecture_id: string
+  course_id: string
   created_at: string
 }
 

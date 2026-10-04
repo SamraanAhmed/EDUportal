@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { BookOpen, LogOut, LayoutDashboard } from 'lucide-react'
+import { BookOpen, LogOut, LayoutDashboard, Video } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logout } from '@/actions/auth'
@@ -42,6 +42,13 @@ export default async function FacultyLayout({
           >
             <LayoutDashboard className="h-4 w-4" />
             <span className="text-sm font-medium">My Courses</span>
+          </Link>
+          <Link
+            href="/faculty/lectures"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+          >
+            <Video className="h-4 w-4 text-red-400" />
+            <span className="text-sm font-medium">Live Lectures</span>
           </Link>
         </nav>
 
