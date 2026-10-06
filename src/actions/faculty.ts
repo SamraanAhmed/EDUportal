@@ -43,7 +43,9 @@ export async function createTask(courseId: string, formData: FormData) {
     file_url = urlData.publicUrl
   }
 
+  const groupId = crypto.randomUUID()
   const { error } = await admin.from('tasks').insert({
+    group_id: groupId,
     title,
     type,
     description: description || null,
@@ -56,6 +58,160 @@ export async function createTask(courseId: string, formData: FormData) {
 
   if (error) return { error: error.message }
   revalidatePath(`/faculty/courses/${courseId}`)
+  revalidatePath('/faculty/tasks')
+  return { success: true }
+}
+
+export async function createBroadcastTask(formData: FormData) {
+  const supabase = await createClient()
+  const admin = createAdminClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const title = formData.get('title') as string
+  const type = formData.get('type') as string
+  const description = formData.get('description') as string
+  const due_date = formData.get('due_date') as string
+  const file = formData.get('file') as File
+  const rawMarks = formData.get('max_marks') as string
+  const course_ids = formData.getAll('course_ids') as string[]
+
+  if (!title?.trim()) return { error: 'Task title is required' }
+  if (!course_ids || course_ids.length === 0) {
+    return { error: 'Please select at least one course to assign this evaluation item to' }
+  }
+
+  let defaultMarks = 10
+  if (type === 'workbook') defaultMarks = 30
+  else if (type === 'quiz_pre_mid' || type === 'quiz_post_mid' || type === 'quiz') defaultMarks = 5
+  else if (type === 'assignment' || type === 'activity') defaultMarks = 10
+
+  const max_marks = rawMarks ? parseInt(rawMarks, 10) : defaultMarks
+
+  let file_url: string | null = null
+  if (file && file.size > 0) {
+    const fileName = `${Date.now()}-${file.name}`
+    const { data: uploadData, error: uploadError } = await admin.storage
+      .from('task-files')
+      .upload(`broadcast/${fileName}`, file)
+
+    if (uploadError) return { error: uploadError.message }
+
+    const { data: urlData } = admin.storage
+      .from('task-files')
+      .getPublicUrl(uploadData.path)
+
+    file_url = urlData.publicUrl
+  }
+
+  const groupId = crypto.randomUUID()
+  const taskRows = course_ids.map((cId) => ({
+    group_id: groupId,
+    title: title.trim(),
+    type,
+    description: description || null,
+    course_id: cId,
+    due_date: due_date || null,
+    file_url,
+    max_marks: isNaN(max_marks) ? defaultMarks : max_marks,
+    created_by: user.id,
+  }))
+
+  const { error } = await admin.from('tasks').insert(taskRows)
+  if (error) return { error: error.message }
+
+  revalidatePath('/faculty/tasks')
+  revalidatePath('/faculty', 'layout')
+  revalidatePath('/student', 'layout')
+  return { success: true }
+}
+
+export async function updateBroadcastTask(groupId: string, formData: FormData) {
+  const supabase = await createClient()
+  const admin = createAdminClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const title = formData.get('title') as string
+  const type = formData.get('type') as string
+  const description = formData.get('description') as string
+  const due_date = formData.get('due_date') as string
+  const rawMarks = formData.get('max_marks') as string
+  const course_ids = formData.getAll('course_ids') as string[]
+
+  if (!title?.trim()) return { error: 'Task title is required' }
+  if (!course_ids || course_ids.length === 0) {
+    return { error: 'Please select at least one course' }
+  }
+
+  let defaultMarks = 10
+  if (type === 'workbook') defaultMarks = 30
+  else if (type === 'quiz_pre_mid' || type === 'quiz_post_mid' || type === 'quiz') defaultMarks = 5
+  else if (type === 'assignment' || type === 'activity') defaultMarks = 10
+
+  const max_marks = rawMarks ? parseInt(rawMarks, 10) : defaultMarks
+
+  // 1. Update existing tasks for this group
+  const updatePayload: Record<string, any> = {
+    title: title.trim(),
+    type,
+    description: description || null,
+    due_date: due_date || null,
+    max_marks: isNaN(max_marks) ? defaultMarks : max_marks,
+  }
+
+  await admin.from('tasks').update(updatePayload).eq('group_id', groupId)
+
+  // 2. Sync course assignments
+  const { data: existingTasks } = await admin
+    .from('tasks')
+    .select('id, course_id, file_url')
+    .eq('group_id', groupId)
+
+  const existingCourseIds = (existingTasks ?? []).map((t) => t.course_id)
+  const existingFileUrl = existingTasks?.[0]?.file_url ?? null
+
+  // Remove tasks for unselected courses
+  const coursesToRemove = existingCourseIds.filter((id) => !course_ids.includes(id))
+  if (coursesToRemove.length > 0) {
+    await admin
+      .from('tasks')
+      .delete()
+      .eq('group_id', groupId)
+      .in('course_id', coursesToRemove)
+  }
+
+  // Add tasks for newly selected courses
+  const coursesToAdd = course_ids.filter((id) => !existingCourseIds.includes(id))
+  if (coursesToAdd.length > 0) {
+    const newRows = coursesToAdd.map((cId) => ({
+      group_id: groupId,
+      title: title.trim(),
+      type,
+      description: description || null,
+      course_id: cId,
+      due_date: due_date || null,
+      file_url: existingFileUrl,
+      max_marks: isNaN(max_marks) ? defaultMarks : max_marks,
+      created_by: user.id,
+    }))
+    await admin.from('tasks').insert(newRows)
+  }
+
+  revalidatePath('/faculty/tasks')
+  revalidatePath('/faculty', 'layout')
+  revalidatePath('/student', 'layout')
+  return { success: true }
+}
+
+export async function deleteBroadcastTask(groupId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin.from('tasks').delete().eq('group_id', groupId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/faculty/tasks')
+  revalidatePath('/faculty', 'layout')
+  revalidatePath('/student', 'layout')
   return { success: true }
 }
 

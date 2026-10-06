@@ -52,6 +52,7 @@ export interface Course {
 
 export interface Task {
   id: string
+  group_id?: string | null
   title: string
   type: TaskType
   description: string | null
