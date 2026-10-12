@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Download } from 'lucide-react'
+import { ArrowLeft, Download, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/badge'
@@ -97,7 +97,7 @@ export default async function SubmissionsPage({
                 <TableHead className="font-semibold text-gray-700">Student Name</TableHead>
                 <TableHead className="font-semibold text-gray-700">Email</TableHead>
                 <TableHead className="font-semibold text-gray-700">Submitted At</TableHead>
-                <TableHead className="font-semibold text-gray-700">File</TableHead>
+                <TableHead className="font-semibold text-gray-700">Submission</TableHead>
                 <TableHead className="font-semibold text-gray-700">Score ({maxMarks})</TableHead>
                 <TableHead className="font-semibold text-gray-700">Feedback</TableHead>
                 <TableHead className="font-semibold text-gray-700 text-right">Actions</TableHead>
@@ -106,6 +106,9 @@ export default async function SubmissionsPage({
             <TableBody>
               {submissions.map((sub) => {
                 const student = sub.profiles as { full_name: string; email: string } | null
+                const isUploadedFile = sub.file_url && sub.file_url.includes('/storage/v1/object/public/submissions/')
+                const isDrive = sub.file_url && /drive\.google\.com|docs\.google\.com/i.test(sub.file_url)
+
                 return (
                   <TableRow key={sub.id}>
                     <TableCell className="font-medium">{student?.full_name ?? '—'}</TableCell>
@@ -115,16 +118,31 @@ export default async function SubmissionsPage({
                     </TableCell>
                     <TableCell>
                       {sub.file_url ? (
-                        <a
-                          href={sub.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          <Download className="h-3.5 w-3.5" /> Download
-                        </a>
+                        isUploadedFile ? (
+                          <a
+                            href={sub.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded border border-gray-200 transition-colors"
+                            title="Uploaded File"
+                          >
+                            <Download className="h-3.5 w-3.5 text-gray-500" />
+                            <span>Download File</span>
+                          </a>
+                        ) : (
+                          <a
+                            href={sub.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded border border-blue-200 transition-colors"
+                            title="Open Google Drive / Document Link"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 text-blue-600" />
+                            <span>{isDrive ? 'Google Drive' : 'Open Link'}</span>
+                          </a>
+                        )
                       ) : (
-                        <span className="text-xs text-gray-400">No file</span>
+                        <span className="text-xs text-gray-400">No submission</span>
                       )}
                     </TableCell>
                     <TableCell>

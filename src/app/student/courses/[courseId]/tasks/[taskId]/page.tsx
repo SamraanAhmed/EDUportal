@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Download, CheckCircle2, Clock, Star } from 'lucide-react'
+import { ArrowLeft, Download, CheckCircle2, Clock, Star, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { SubmitForm } from './_components/SubmitForm'
 import { TASK_TYPE_CONFIG, type TaskType } from '@/lib/types'
+
+function SubmissionFileOrLink({ url }: { url: string }) {
+  const isUploadedFile = url.includes('/storage/v1/object/public/submissions/')
+  const isDrive = /drive\.google\.com|docs\.google\.com/i.test(url)
+
+  if (isUploadedFile) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-800 border border-gray-200 text-xs font-medium hover:bg-gray-200 transition-colors w-fit"
+      >
+        <Download className="h-3.5 w-3.5 text-gray-600" />
+        <span>View / Download Uploaded File</span>
+      </a>
+    )
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold hover:bg-blue-100 transition-colors w-fit"
+    >
+      <ExternalLink className="h-3.5 w-3.5 text-blue-600" />
+      <span>{isDrive ? 'Open Google Drive Submission' : 'Open Submission Link'}</span>
+    </a>
+  )
+}
 
 export default async function StudentTaskPage({
   params,
@@ -133,24 +164,22 @@ export default async function StudentTaskPage({
               {submission.file_url && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    Your File
+                    Your Submission
                   </p>
-                  <a
-                    href={submission.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                  >
-                    <Download className="h-3.5 w-3.5" /> View Submitted File
-                  </a>
+                  <SubmissionFileOrLink url={submission.file_url} />
                 </div>
               )}
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                  Resubmit
+                  Resubmit / Update Link
                 </p>
-                <SubmitForm taskId={taskId} courseId={courseId} hasExistingSubmission={true} />
+                <SubmitForm
+                  taskId={taskId}
+                  courseId={courseId}
+                  hasExistingSubmission={true}
+                  existingUrl={submission.file_url}
+                />
               </div>
             </>
           ) : isSubmitted ? (
@@ -166,21 +195,24 @@ export default async function StudentTaskPage({
                 Submitted on {new Date(submission.submitted_at).toLocaleString()}
               </p>
               {submission.file_url && (
-                <a
-                  href={submission.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                >
-                  <Download className="h-3.5 w-3.5" /> View Submitted File
-                </a>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Your Submission
+                  </p>
+                  <SubmissionFileOrLink url={submission.file_url} />
+                </div>
               )}
               <Separator />
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                  Resubmit
+                  Resubmit / Update Link
                 </p>
-                <SubmitForm taskId={taskId} courseId={courseId} hasExistingSubmission={true} />
+                <SubmitForm
+                  taskId={taskId}
+                  courseId={courseId}
+                  hasExistingSubmission={true}
+                  existingUrl={submission.file_url}
+                />
               </div>
             </>
           ) : (
