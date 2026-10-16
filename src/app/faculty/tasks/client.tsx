@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import {
   Plus,
   Pencil,
@@ -12,6 +13,8 @@ import {
   Square,
   ClipboardList,
   ExternalLink,
+  Users,
+  ArrowRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,9 +56,12 @@ export interface FacultyBroadcastTaskItem {
   assignedCourses: {
     id: string
     name: string
+    taskId?: string
     batchName?: string
     programName?: string
+    submissionCount?: number
   }[]
+  totalSubmissions?: number
 }
 
 interface EvaluationItemsClientProps {
@@ -398,6 +404,86 @@ function DeleteButton({ groupId }: { groupId: string }) {
   )
 }
 
+function SubmissionsAction({ task }: { task: FacultyBroadcastTaskItem }) {
+  const [open, setOpen] = useState(false)
+  const total = task.totalSubmissions ?? 0
+  const courses = task.assignedCourses
+
+  if (courses.length === 0) return null
+
+  if (courses.length === 1) {
+    const c = courses[0]
+    return (
+      <Link
+        href={`/faculty/courses/${c.id}/tasks/${c.taskId || task.groupId}/submissions`}
+        className="inline-flex items-center justify-center h-8 gap-1.5 px-2.5 rounded-lg border text-xs font-semibold text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 transition-colors shadow-xs"
+      >
+        <Users className="h-3.5 w-3.5" />
+        <span>Submissions ({c.submissionCount ?? total})</span>
+      </Link>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs font-semibold text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800"
+          >
+            <Users className="h-3.5 w-3.5" />
+            <span>Submissions ({total})</span>
+          </Button>
+        }
+      />
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-base font-bold text-gray-900">
+            Course Submissions
+          </DialogTitle>
+          <p className="text-xs text-gray-500">
+            Select a course to view student submissions for &quot;{task.title}&quot;:
+          </p>
+        </DialogHeader>
+        <div className="space-y-2 mt-2 max-h-80 overflow-y-auto">
+          {courses.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+            >
+              <div className="min-w-0 pr-3">
+                <p className="text-xs font-bold text-gray-900 truncate">{c.name}</p>
+                <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mt-0.5">
+                  {c.batchName && <span>Batch: {c.batchName}</span>}
+                  {c.programName && <span>• {c.programName}</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Badge
+                  variant="secondary"
+                  className="text-xs font-bold bg-white border border-gray-200 text-gray-700"
+                >
+                  {c.submissionCount ?? 0}
+                </Badge>
+                <Link
+                  href={`/faculty/courses/${c.id}/tasks/${c.taskId || task.groupId}/submissions`}
+                  onClick={() => setOpen(false)}
+                  className="inline-flex items-center justify-center h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2.5 rounded-lg font-medium transition-colors"
+                >
+                  <span>View</span>
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Main Client Page ─────────────────────────────────────────────
 export function EvaluationItemsClient({
   tasks,
@@ -529,7 +615,8 @@ export function EvaluationItemsClient({
                 </div>
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-1 flex-shrink-0 self-end md:self-center">
+                <div className="flex items-center gap-2 flex-shrink-0 self-end md:self-center">
+                  <SubmissionsAction task={task} />
                   <TaskFormDialog
                     task={task}
                     courses={courses}

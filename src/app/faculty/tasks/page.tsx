@@ -37,6 +37,22 @@ export default async function EvaluationItemsPage() {
     return courseIds.includes(t.course_id)
   })
 
+  // Fetch submission counts for these tasks
+  const taskIds = filteredTasks.map((t: any) => t.id)
+  const submissionCountsMap: Record<string, number> = {}
+  if (taskIds.length > 0) {
+    const { data: subData } = await admin
+      .from('submissions')
+      .select('task_id')
+      .in('task_id', taskIds)
+
+    if (subData) {
+      for (const s of subData) {
+        submissionCountsMap[s.task_id] = (submissionCountsMap[s.task_id] || 0) + 1
+      }
+    }
+  }
+
   // Group tasks by group_id (fallback to task.id if group_id is null)
   const taskGroupMap = new Map<string, FacultyBroadcastTaskItem>()
 
@@ -44,12 +60,15 @@ export default async function EvaluationItemsPage() {
     const key = t.group_id || t.id
     const c = t.courses
     const batch = c?.batches
+    const subCount = submissionCountsMap[t.id] ?? 0
     const courseObj = c
       ? {
           id: c.id,
           name: c.name,
+          taskId: t.id,
           batchName: batch?.name,
           programName: batch?.programs?.name,
+          submissionCount: subCount,
         }
       : null
 
@@ -65,6 +84,7 @@ export default async function EvaluationItemsPage() {
         created_at: t.created_at,
         assignedCourseIds: [t.course_id],
         assignedCourses: courseObj ? [courseObj] : [],
+        totalSubmissions: subCount,
       })
     } else {
       const existing = taskGroupMap.get(key)!
@@ -74,6 +94,7 @@ export default async function EvaluationItemsPage() {
       if (courseObj && !existing.assignedCourses.some((item) => item.id === courseObj.id)) {
         existing.assignedCourses.push(courseObj)
       }
+      existing.totalSubmissions = (existing.totalSubmissions ?? 0) + subCount
     }
   }
 

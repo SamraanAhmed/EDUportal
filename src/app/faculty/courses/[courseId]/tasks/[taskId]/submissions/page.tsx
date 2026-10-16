@@ -40,7 +40,7 @@ export default async function SubmissionsPage({
   // Fetch submissions with student profile
   const { data: submissions } = await admin
     .from('submissions')
-    .select('*, profiles(full_name, email)')
+    .select('*, profiles:student_id(full_name, email)')
     .eq('task_id', taskId)
     .order('submitted_at', { ascending: false })
 
